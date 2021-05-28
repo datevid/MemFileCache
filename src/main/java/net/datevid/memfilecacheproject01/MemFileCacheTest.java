@@ -16,13 +16,13 @@ public class MemFileCacheTest {
         try {
 
             //inicializacion
-            String ruta="J:\\py2020\\Java2020\\mavenproject1\\src\\main\\java\\com\\mycompany\\mavenproject1\\FileInput01";
-            MemFileCache.getInstance(ruta,1000*60*5);//5 minutos, default 1H
+            String ruta="J:\\py2020\\Java2020\\mavenproject1\\src\\main\\java\\com\\mycompany\\mavenproject1\\CarpetaJava01";
+            MemFileCache.getInstance(ruta,1000*60*5,null);//5 minutos, default 1H
 
-            //uso en cualquier parte
+            //set data and key
             MemFileCache.getInstance().setData("userId-56783","Información de José Perez en JSON o cualquier otro formato");
 
-            //get data value
+            //get data from key
             System.out.println("data key userId-56783 is:");
             String dataString = MemFileCache.getInstance().getData("userId-56783");
             System.out.println(dataString);
