@@ -31,21 +31,24 @@ public class MemFileCache {
     /**
      * guarda la key y la cantidad de veces que fue consultada
      */
-    private TreeMap<String, MemFileFrecuencyBean> statistics;
+    private TreeMap<String, MemFileFrecuencyBean> statisticsFrecuencyRequest;
 
     //private MemFileCache(String path){
     //    this.path=path;
     //    this.expirationMilliseconds =1000*60*60;//default 1H
     //}
 
-    private MemFileCache(String path,long expirationMilliseconds,Long periodMinutes){
+    private MemFileCache(String path,long expirationMilliseconds,boolean saveStatisticFrecuencyRequest,Long periodStatisticsMilliseconds){
         this.path=path;
         this.expirationMilliseconds = expirationMilliseconds;
-        this.statistics = new TreeMap<>();
+        this.statisticsFrecuencyRequest = new TreeMap<>();
 
-        //guarda las estadisticas en fichero cada cierto tiempo
-        String fileName="MemFileCacheStatistics.csv";
-        this.saveStatisticsSameFile(fileName,periodMinutes);
+        if (saveStatisticFrecuencyRequest) {
+            //guarda las estadisticas de frecuencia de datos solicitados
+            //los guarda en fichero cada cierto tiempo indicado en periodStatisticsMilliseconds
+            String fileName="MemFileCacheStatisticsFrecuencyRequest.csv";
+            this.saveStatisticFrecuencyRequest(fileName,periodStatisticsMilliseconds);
+        }
     }
 
     static public MemFileCache getInstance() throws IOException {
@@ -61,9 +64,9 @@ public class MemFileCache {
     //    }
     //    return instance;
     //}
-    static public MemFileCache getInstance(String path,long expirationMiliseconds,Long periodSeconds){
+    static public MemFileCache getInstance(String path,long expirationMiliseconds,boolean saveStatisticFrecuencyRequest,Long periodStatisticsMilliseconds){
         if (instance == null) {
-            instance = new MemFileCache(path,expirationMiliseconds,periodSeconds);
+            instance = new MemFileCache(path,expirationMiliseconds,saveStatisticFrecuencyRequest,periodStatisticsMilliseconds);
         }
         return instance;
     }
@@ -107,7 +110,7 @@ public class MemFileCache {
                 sb.append(line);
                 sb.append('\n');
             }
-            this.updateStatistics(key);//actualiza estadisticas
+            this.updateStatisticFrecuencyRequest(key);//actualiza estadisticas de frecuencia
             return sb.toString();
         }catch (IOException e){
             e.printStackTrace();
@@ -145,36 +148,37 @@ public class MemFileCache {
     public boolean ifExpired(Date fechaActual, Date fechaModificado, long limitMiliseconds) {
         long millDif = fechaActual.getTime() - fechaModificado.getTime();
         if (millDif >= limitMiliseconds) {
-            System.out.println("El archivo ha expirado. por "+(millDif/(1000*60))+" minutos");
+            //System.out.println("El archivo ha expirado. por "+(millDif/(1000*60))+" minutos");
             return true;
         }else{
             return false;
         }
     }
 
-    public void updateStatistics(String key) {
-        MemFileFrecuencyBean memFileFrecuencyBean = this.statistics.get(key);
+    public void updateStatisticFrecuencyRequest(String key) {
+        MemFileFrecuencyBean memFileFrecuencyBean = this.statisticsFrecuencyRequest.get(key);
         if (memFileFrecuencyBean == null) {
             memFileFrecuencyBean = new MemFileFrecuencyBean(key, 0, 0);
         }
         memFileFrecuencyBean.setFrecuencia(memFileFrecuencyBean.getFrecuencia()+1);
-        this.statistics.put(key, memFileFrecuencyBean);
+        this.statisticsFrecuencyRequest.put(key, memFileFrecuencyBean);
 
     }
 
     /**
+     * Guarda estadísticas de frecuencia con que se solicitan los datos
      * Guarda las estadisticas en un mismo archivo
-     * que será actualizado cada cierto tiempo indicado en periodMinutes
+     * que será actualizado cada cierto tiempo indicado en periodMilliseconds
      *
      * El formato del archivo es de formato nombreArchivo - FrecuenciaUso
      * @param fileName
-     * @param periodMinutes
+     * @param periodMilliseconds
      */
-    public void saveStatisticsSameFile(String fileName,Long periodMinutes) {
+    public void saveStatisticFrecuencyRequest(String fileName, Long periodMilliseconds) {
 
         //set period in minutes
-        Long periodDefault=1L*15;//15 minutes
-        periodMinutes = (periodMinutes == null) ? periodDefault : periodMinutes;
+        Long periodDefault=1000L*60*15;//15 minutes
+        periodMilliseconds = (periodMilliseconds == null) ? periodDefault : periodMilliseconds;
 
         //save each time
         Timer timer = new Timer();
@@ -183,7 +187,7 @@ public class MemFileCache {
             public void run() {
                 StringBuffer data = new StringBuffer();
                 try {
-                    for(Map.Entry m:statistics.entrySet())
+                    for(Map.Entry m: statisticsFrecuencyRequest.entrySet())
                     {
                         //System.out.println(m.getKey()+" "+m.getValue());
                         MemFileFrecuencyBean value = (MemFileFrecuencyBean)m.getValue();
@@ -204,7 +208,7 @@ public class MemFileCache {
                     System.err.format("IOException: %s%n", e);
                 }
             }
-        },0,periodMinutes);
+        },0,periodMilliseconds);
     }
 
     /**
